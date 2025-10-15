@@ -1,41 +1,122 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="utf-8">
-<title>Test Tech Cafe</title>
-<meta name="keywords" content="ページのキーワードA,B,C">
-<meta name="description" content="ページの説明">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="stylesheet" href="style.css">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>社内PC便利帳（fetch版）</title>
+<style>
+  :root{
+    --brand:#007B43;
+    --brand-weak:#e0eee0;
+  }
+  *{box-sizing:border-box}
+  body{font-family:"游ゴシック体","Yu Gothic",sans-serif;margin:0;background:#fff;color:#222;line-height:1.8}
+  header{background:var(--brand);color:#fff;text-align:center;padding:22px 16px}
+  header h1{margin:0;font-size:1.6em}
+  header p{margin:6px 0 0;font-size:.95em}
+  nav{background:var(--brand-weak);display:flex;justify-content:center;flex-wrap:wrap}
+  nav a{padding:12px 18px;text-decoration:none;color:var(--brand);font-weight:700;cursor:pointer;border-bottom:3px solid transparent}
+  nav a:hover{background:#cdeccd}
+  nav a.active{border-bottom-color:var(--brand);}
+  main{display:flex;flex-wrap:wrap;padding:20px;gap:20px;min-height:40vh}
+  article{flex:2;min-width:260px}
+  aside{flex:1;min-width:220px;background:#f8f8f8;padding:15px;border:1px solid #ccc}
+  h2,h3,h4{border-left:5px solid var(--brand);padding-left:10px;color:var(--brand)}
+  footer{background:var(--brand);color:#fff;text-align:center;padding:12px;font-size:.9em}
+  .fade-enter{opacity:0;transition:opacity .25s ease}
+  .fade-enter.fade-enter-active{opacity:1}
+  /* モバイル */
+  @media (max-width: 768px){
+    main{flex-direction:column}
+    nav{flex-direction:column}
+    nav a{text-align:center;border-bottom:1px solid #cdeccd}
+  }
+</style>
 </head>
 <body>
-<div id="outer">
 <header>
-<div class="header-inner">
-<h1>Test Tech Cafe</h1>
-<p>あああああああああああああああああああ</p>
-</div>
+  <h1>社内PC便利帳</h1>
+  <p>メニューを選ぶと下のコンテンツが <strong>fetch()</strong> で切り替わります</p>
 </header>
-<div id="content">
-<div class="inner">
-<h2>記事ページ見出し・大</h2>
-<p>文章あれこれ</p>
-<h3>記事ページ見出し・中</h3>
-<p>文章あれこれ</p>
-<h4>記事ページ見出し・小</h4>
-<p>文章あれこれ</p>
-</div>
-<aside>
-<div class="left-title">サイドバータイトル</div>
-<div class="link">
-<ul>
-<li>記事ページへのリンク</li>
-<li>記事ページへのリンク</li>
-</ul>
-</div>
-</aside>
-</div>
-<footer>© 2025&nbsp;Creete</footer>
-</div>
+
+<nav id="menu">
+  <a href="#home"   data-file="pages/home.html"   class="active">HOME</a>
+  <a href="#pc"     data-file="pages/pc.html">使うと便利なPCの機能</a>
+  <a href="#excel"  data-file="pages/excel.html">Excel</a>
+  <a href="#mail"   data-file="pages/mail.html">Gmail & Outlook</a>
+  <a href="#script" data-file="pages/script.html">共有スクリプト</a>
+</nav>
+
+<main>
+  <article id="content" aria-live="polite">
+    <!-- ここに別HTMLが読み込まれます -->
+  </article>
+
+  <aside>
+    <h3>新着情報</h3>
+    <p>サイトを公開しました（fetch版）。</p>
+
+    <h3>お問い合わせ先</h3>
+    <p>info@example.com<br>tel 00-0000-0000</p>
+
+    <h3>Information</h3>
+    <p>〒000-0000<br>
+    ○○県○○市○○町1丁目20-30<br>
+    tel 06-0000-0001 fax 06-0000-0002</p>
+  </aside>
+</main>
+
+<footer>
+  <p>CopyRight© Creete . ALL Rights Reserved.</p>
+</footer>
+
+<script>
+  const contentEl = document.getElementById('content');
+  const menu = document.getElementById('menu');
+  const linkMap = new Map([...menu.querySelectorAll('a')].map(a => [a.getAttribute('href').replace('#',''), a]));
+
+  async function load(filePath){
+    try{
+      const res = await fetch(filePath, {cache:'no-store'});
+      if(!res.ok) throw new Error(res.status + ' ' + res.statusText);
+      const html = await res.text();
+      // simple fade
+      contentEl.classList.remove('fade-enter','fade-enter-active');
+      void contentEl.offsetWidth; // reflow
+      contentEl.classList.add('fade-enter');
+      contentEl.innerHTML = html;
+      requestAnimationFrame(() => contentEl.classList.add('fade-enter-active'));
+    }catch(err){
+      contentEl.innerHTML = `<h2>読み込みエラー</h2><p>ファイル <code>${filePath}</code> を読み込めませんでした。<br>同じフォルダ構成で配置しているか確認してください。</p><pre>${err.message}</pre>`;
+    }
+  }
+
+  function setActive(hash){
+    menu.querySelectorAll('a').forEach(a => a.classList.remove('active'));
+    const key = (hash || 'home').replace('#','');
+    const link = linkMap.get(key) || linkMap.get('home');
+    link.classList.add('active');
+    return link.getAttribute('data-file');
+  }
+
+  function handleRoute(){
+    const file = setActive(location.hash);
+    load(file);
+  }
+
+  // クリック時（キーボード操作でも）ハッシュ遷移のみでOK
+  menu.addEventListener('click', (e) => {
+    const a = e.target.closest('a');
+    if(!a) return;
+    // その場で即時ロード（ブラウザがhashchangeを遅らせる環境対策）
+    e.preventDefault();
+    history.pushState(null,'',a.getAttribute('href'));
+    handleRoute();
+  });
+
+  window.addEventListener('hashchange', handleRoute);
+  // 初期表示
+  handleRoute();
+</script>
 </body>
 </html>
